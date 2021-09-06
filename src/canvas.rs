@@ -13,12 +13,13 @@ fn rect_to_sdl_rect(screen_x: u32, screen_y: u32, r: Rect) -> sdl2::rect::Rect {
     // map x from 0..a
     // map y from 0..1
     let a = screen_x as f32 / screen_y as f32;
-    sdl2::rect::Rect::new(
+    let ret = sdl2::rect::Rect::new(
         (screen_x as f32 * r.x / a) as i32,
         (screen_y as f32 * r.y) as i32,
         (screen_x as f32 * r.w / a) as u32, 
         (screen_y as f32 * r.h) as u32,
-    )
+    );
+    return ret;
 }
 
 impl Canvas<'_> {

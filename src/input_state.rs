@@ -2,52 +2,52 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 
-pub struct InputState {
-    pub pressed_keys: HashSet<Keycode>,
-    pub held_keys: HashSet<Keycode>,
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+pub enum Input {
+    Up,
+    Down,
+    Left,
+    Right,
+    Action1,
+    Action2,
+}
+pub type InputState = [PlayerInputState; 4];
 
-    pub mouse_pos: (f32, f32), // range 0..a in x and 0..1 in y
-
-    pub mouse_click_left: bool,
-    pub mouse_click_right: bool,
-
-    pub mouse_held_left: bool,
-    pub mouse_held_right: bool,
-
-    pub quit: bool,
-
-    // also middle scroll etc
+pub struct PlayerInputState {
+    pub new_inputs: Vec<Input>,
+    pub held_inputs: HashSet<Input>,
 }
 
-impl InputState {
-    // returns the input state and if there was a quit event
-    pub fn new(event_pump: &mut sdl2::EventPump, screen_x: u32, screen_y: u32) -> InputState {
-        let a = screen_x as f32 / screen_y as f32;
-        let mut input_state = InputState {
-            quit: false,
-            pressed_keys: HashSet::new(),
-            held_keys: HashSet::new(),
-            mouse_pos: (event_pump.mouse_state().x() as f32 * a / screen_x as f32,
-                event_pump.mouse_state().y() as f32 / screen_y as f32),
-            mouse_held_left: event_pump.mouse_state().left(),
-            mouse_held_right: event_pump.mouse_state().right(),
-            mouse_click_left: false,
-            mouse_click_right: false,
-        };
+pub fn translate_inputs(event_pump: &mut sdl2::EventPump, schema: &HashMap<Keycode, (usize, Input)>) -> (InputState, bool) {
+    let mut player_inputs = [
+        PlayerInputState{new_inputs: Vec::new(), held_inputs: HashSet::new()},
+        PlayerInputState{new_inputs: Vec::new(), held_inputs: HashSet::new()},
+        PlayerInputState{new_inputs: Vec::new(), held_inputs: HashSet::new()},
+        PlayerInputState{new_inputs: Vec::new(), held_inputs: HashSet::new()}
+    ];
+            
+    let mut quit = false;
 
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit{..} => {input_state.quit = true;},
-                Event::KeyDown{keycode: Some(keycode), ..} => {input_state.pressed_keys.insert(keycode);},
-                Event::MouseButtonDown{mouse_btn: sdl2::mouse::MouseButton::Left, ..} => {input_state.mouse_click_left = true;},
-                Event::MouseButtonDown{mouse_btn: sdl2::mouse::MouseButton::Right, ..} => {input_state.mouse_click_right = true;},
-                _ => {},
-            }
+    for event in event_pump.poll_iter() {
+        match event {
+            Event::Quit{..} => {quit = true;},
+            Event::KeyDown{keycode: Some(keycode), ..} => {
+                if let Some((player_number, input)) = schema.get(&keycode) {
+                    player_inputs[*player_number].new_inputs.push(*input);
+                }
+            },
+            _ => {},
         }
-
-        input_state.held_keys = event_pump.keyboard_state().pressed_scancodes().filter_map(Keycode::from_scancode).collect();
-        return input_state;
     }
+
+    event_pump.keyboard_state().pressed_scancodes().filter_map(Keycode::from_scancode).for_each(|keycode| {
+        if let Some((player_number, input)) = schema.get(&keycode) {
+            player_inputs[*player_number].held_inputs.insert(*input);
+        }
+    });
+
+    (player_inputs, quit)
 }

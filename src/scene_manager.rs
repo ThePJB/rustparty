@@ -2,10 +2,15 @@
 // i guess just choose an enum and have to dispatch it manually, thats fine i guess
 
 use crate::canvas::Canvas;
+use crate::input_state::Input;
 use crate::input_state::InputState;
+use crate::input_state::translate_inputs;
 
+use std::collections::HashMap;
 use std::time::SystemTime;
 use std::time::Duration;
+
+use sdl2::keyboard::Keycode;
 
 pub enum Signal {
     End,
@@ -27,7 +32,7 @@ pub struct SceneManager {
 
 impl SceneManager {
     pub fn new() -> SceneManager {
-        SceneManager {current_game: Box::new(crate::games::testgame::TestGame{})}
+        SceneManager {current_game: Box::new(crate::games::testgame::TestGame::new())}
     }
 
     pub fn run(&mut self) {
@@ -45,14 +50,28 @@ impl SceneManager {
         let mut event_pump = sdl_context.event_pump().unwrap();
         let mut dt = 1.0f64 / 60f64;
 
+        let mut input_schema = HashMap::new();
+        input_schema.insert(Keycode::W, (0, Input::Up));
+        input_schema.insert(Keycode::A, (0, Input::Left));
+        input_schema.insert(Keycode::S, (0, Input::Down));
+        input_schema.insert(Keycode::D, (0, Input::Right));
+        input_schema.insert(Keycode::F, (0, Input::Action1));
+        input_schema.insert(Keycode::G, (0, Input::Action2));
+
+        input_schema.insert(Keycode::I, (1, Input::Up));
+        input_schema.insert(Keycode::J, (1, Input::Left));
+        input_schema.insert(Keycode::K, (1, Input::Down));
+        input_schema.insert(Keycode::L, (1, Input::Right));
+        input_schema.insert(Keycode::Colon, (1, Input::Action1));
+        input_schema.insert(Keycode::Quote, (1, Input::Action2));
+
         'running: loop {
             let loop_start = SystemTime::now();
 
-            let frame_input_state = InputState::new(&mut event_pump, xres, yres);
+            let (player_inputs, quit) = translate_inputs(&mut event_pump, &input_schema);
+            if quit { break 'running;}
 
-            if frame_input_state.quit { break 'running;}
-
-            if let Some(signal) = self.current_game.update(&frame_input_state, dt) {
+            if let Some(signal) = self.current_game.update(&player_inputs, dt) {
                 match signal {
                     Signal::End => {break 'running},
                 }
