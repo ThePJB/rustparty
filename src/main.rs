@@ -1,9 +1,14 @@
-mod rect;
 mod games;
+mod systems;
+mod components;
+
+mod rect;
 mod scene_manager;
 mod grid;
 mod vec2;
 mod vec3;
+
+mod players;
 
 mod canvas;
 mod input_state;

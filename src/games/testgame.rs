@@ -6,6 +6,7 @@ use crate::input_state::Input;
 use crate::vec2::Vec2;
 use crate::vec3::Vec3;
 use crate::rect::Rect;
+use crate::players::player_colours;
 
 #[derive(Clone, Copy, Debug)]
 struct Entity {
@@ -61,12 +62,9 @@ impl Game for TestGame {
 
         // update movement
         for player in self.players.iter_mut() {
-            //println!("player aabb {:?} vel {:?} dt {:?}", player.aabb, player.vel, dt);
             player.aabb.x += player.vel.x * dt as f32;
             player.aabb.y += player.vel.y * dt as f32;
         }
-
-
 
         None
     }
@@ -74,8 +72,8 @@ impl Game for TestGame {
     fn draw(&self, canvas: &mut Canvas) {
         canvas.clear(Vec3::new(1.0, 1.0, 1.0));
 
-        for player in self.players {
-            canvas.draw_rect(player.aabb, Vec3::new(1.0, 0.0, 0.0));
+        for (player_num, player) in self.players.iter().enumerate() {
+            canvas.draw_rect(player.aabb, player_colours[player_num]);
         }
 
         canvas.present();

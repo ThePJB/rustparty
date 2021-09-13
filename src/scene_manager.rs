@@ -13,6 +13,7 @@ use std::time::Duration;
 use sdl2::keyboard::Keycode;
 
 pub enum Signal {
+    Victory(u32),
     End,
 }
 pub trait Game {
@@ -32,7 +33,9 @@ pub struct SceneManager {
 
 impl SceneManager {
     pub fn new() -> SceneManager {
-        SceneManager {current_game: Box::new(crate::games::testgame::TestGame::new())}
+        let a = 1.77777;
+        //SceneManager {current_game: Box::new(crate::games::testgame::TestGame::new())}
+        SceneManager {current_game: Box::new(crate::games::wizard_duel::WizardDuel::new(a))}
     }
 
     pub fn run(&mut self) {
@@ -62,7 +65,7 @@ impl SceneManager {
         input_schema.insert(Keycode::J, (1, Input::Left));
         input_schema.insert(Keycode::K, (1, Input::Down));
         input_schema.insert(Keycode::L, (1, Input::Right));
-        input_schema.insert(Keycode::Colon, (1, Input::Action1));
+        input_schema.insert(Keycode::Semicolon, (1, Input::Action1));
         input_schema.insert(Keycode::Quote, (1, Input::Action2));
 
         'running: loop {
@@ -73,6 +76,11 @@ impl SceneManager {
 
             if let Some(signal) = self.current_game.update(&player_inputs, dt) {
                 match signal {
+                    Signal::Victory(winner) => {
+                        println!("player {} victory", winner);
+                        let a = 1.77777;
+                        self.current_game = Box::new(crate::games::wizard_duel::WizardDuel::new(a))
+                    },
                     Signal::End => {break 'running},
                 }
             }
