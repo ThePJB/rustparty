@@ -1,3 +1,5 @@
+use std::f32::INFINITY;
+
 use crate::vec2::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -15,9 +17,21 @@ impl Rect {
     pub fn new_centered(x: f32, y: f32, w: f32, h: f32) -> Rect {
         Rect::new(x-w/2.0, y-h/2.0, w, h)
     }
+    pub fn translate(&self, v: Vec2) -> Rect {
+        return Rect::new(self.x + v.x, self.y + v.y, self.w, self.h);
+    }
 
     pub fn dilate(&self, d: f32) -> Rect {
         return Rect::new(self.x - d, self.y - d, self.w + 2.0*d, self.h + 2.0*d);
+    }
+    pub fn dir_side(&self, dir: Vec2) -> f32 {
+        match dir {
+            v if v == Vec2::up() => self.top(),
+            v if v == Vec2::right() => self.right(),
+            v if v == Vec2::down() => self.bot(),
+            v if v == Vec2::left() => self.left(),
+            _ => {panic!("bad dir side argument")}
+        }
     }
 
     pub fn left(self) -> f32 {
@@ -59,5 +73,39 @@ pub fn rect_intersection(a: Rect, b: Rect) -> bool {
     overlap_1d(a.top(), a.bot(), b.top(), b.bot())
 }
 
+// 5 cases: both a in b, both b in a, a left in b, b left in a, no overlap
+fn overlap_amount(a1: f32, a2: f32, b1: f32, b2: f32) -> f32 {
+    let a1_in_b = a1 > b1 && a1 < b2;
+    let a2_in_b = a2 > b1 && a2 < b2;
+    let b1_in_a = b1 > a1 && b1 < a2;
+    let b2_in_a = b2 > a1 && b2 < a2;
 
+    if !a1_in_b && !a2_in_b && !b1_in_a && !b2_in_a {return 0.0;} // no overlap
+    if a1_in_b && a2_in_b {return a2 - a1;} // a fully within b // maybe better to do distance to outside still
+    if b1_in_a && b2_in_a {return b2 - b1;} // b fully within a
+    if a1_in_b {return b2 - a1;} // a to right of b
+    if b1_in_a {return -(a2 - b1);} // b to right of a
+
+    panic!("unhandled overlap case");
+}
+
+pub fn least_penetration(a: Rect, b: Rect) -> Vec2 {
+    let x_overlap = overlap_amount(a.left(), a.right(), b.left(), b.right());
+    let y_overlap = overlap_amount(a.top(), a.bot(), b.top(), b.bot());
+
+    if x_overlap.abs() < y_overlap.abs() {
+        Vec2::new(x_overlap, 0.0)
+    } else {
+        Vec2::new(0.0, y_overlap)
+    }
+}
+
+#[test]
+fn test_least_pen() {
+    let r1 = Rect::new(0.0, 0.0, 1.0, 1.0);
+    let r2 = Rect::new(0.9, 0.8, 1.0, 1.0);
+
+    assert_eq!(least_penetration(r1, r2), Vec2::new(-0.1, 0.0));
+    assert_eq!(least_penetration(r2, r1), Vec2::new(0.1, 0.0));
+}
 

@@ -33,9 +33,16 @@ use rand::Rng;
 static player_speed: f32 = 0.25;
 static player_size: f32 = 0.05;
 
+static mana_bar_size: f32 = 0.01;
+static mana_bar_gap: f32 = 0.005;
+
+
+static mana_cost_to_fire: f32 = 0.7;
+static mana_regen: f32 = 0.2;
+
 static projectile_s: f32 = 0.025;
 static projectile_speed: f32 = 0.4;
-static projectile_ttl: f32 = 1.0;
+static projectile_ttl: f32 = 0.7;
 static spawn_away_distance: f32 = 0.02;
 
 
@@ -146,10 +153,12 @@ impl WizardDuel {
         return game;
     }
 
-    fn handle_player_input(&mut self, player: u32, state: &PlayerInputState) {
+    fn handle_player_input(&mut self, player: u32, state: &PlayerInputState, dt: f32) {
         if let Some(player_component) = self.entities.player_comps.get_mut(&player) {
             let phys_component = self.entities.phys_comps.get_mut(&player).unwrap();
             let team_component = self.entities.team_comps.get(&player).unwrap();
+
+            let strafe = state.held_inputs.contains(&Input::Action2);
 
             phys_component.vel.y = 
                 if state.held_inputs.contains(&Input::Up) {
@@ -170,19 +179,18 @@ impl WizardDuel {
                 };
 
             if phys_component.vel.x != 0.0 || phys_component.vel.y != 0.0 {
-                player_component.facing = phys_component.vel.normalize();
+                if !strafe {player_component.facing = phys_component.vel.normalize();}
                 phys_component.vel = phys_component.vel.normalize().mul_scalar(player_speed);
             }
-
-            if state.held_inputs.contains(&Input::Action2) {
-                // check held shield, which overwrites shoot
-                println!("shield time");
                 
-            } else if state.held_inputs.contains(&Input::Action1) {
-                println!("makea dat fire bwah");
-                // then shoot
-                self.side_effects.push(SideEffect::SpawnProjectile(*team_component, phys_component.aabb.center(), player_component.facing));
-                // mana goes down
+            if state.held_inputs.contains(&Input::Action1) {
+                let mana_cost = mana_cost_to_fire * dt;
+                if player_component.mana > mana_cost {
+                    player_component.mana -= mana_cost;
+                    self.side_effects.push(SideEffect::SpawnProjectile(*team_component, phys_component.aabb.center(), player_component.facing));
+                }
+            } else {
+                player_component.mana = 1.0f32.min(player_component.mana + mana_regen * dt);
             }
         }
     }
@@ -199,7 +207,7 @@ impl Game for WizardDuel {
 
         // handle input
         for (player_number, state) in inputs.iter().enumerate() {
-            self.handle_player_input(player_number as u32, state);
+            self.handle_player_input(player_number as u32, state, dt as f32);
         }
 
         simulate_collisions(&self.entities.phys_comps, &mut collision_events, dt as f32);
@@ -224,8 +232,6 @@ impl Game for WizardDuel {
                 }
             }
         }
-
-
 
         apply_movement(&mut self.entities.phys_comps, &collision_events, dt as f32);
         
@@ -256,6 +262,11 @@ impl Game for WizardDuel {
                 canvas.draw_rect(phys_comp.aabb, player_colours[*team as usize].mul_scalar(0.8));
             } else if let Some(player_comp) = self.entities.player_comps.get(key) {
                 canvas.draw_rect(phys_comp.aabb, player_colours[*team as usize].mul_scalar(1.0));
+                let mana_bar_bg_rect = Rect::new(phys_comp.aabb.x, phys_comp.aabb.y - mana_bar_gap - mana_bar_size, phys_comp.aabb.w, mana_bar_size);
+                let mut mana_bar_rect = mana_bar_bg_rect;
+                mana_bar_rect.w *= player_comp.mana;
+                canvas.draw_rect(mana_bar_bg_rect, Vec3::zero());
+                canvas.draw_rect(mana_bar_rect, Vec3::new(0.0, 0.0, 1.0));
             }
         }
         canvas.present();
